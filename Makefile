@@ -259,26 +259,47 @@ else ifeq ($(platform), classic_armv7_a7)
 else ifeq ($(platform), classic_armv8_a35)
 	EXT    ?= so
 	TARGET := $(TARGET_NAME)_libretro.$(EXT)
-	SHARED += -shared -Wl,--version-script=link.T
+	SHARED += -shared -Wl,--version-script=link.T -Wl,--no-undefined
 	fpic = -fPIC
 	LIBS += -lrt
 	ARM_FLOAT_ABI_HARD = 1
 	FORCE_GLES = 1
 	SINGLE_PREC_FLAGS = 1
 	HAVE_LTCG = 0
-	HAVE_OPENMP = 0
+	HAVE_OPENMP = 1
 	CFLAGS += -Ofast \
-	-fuse-linker-plugin \
 	-fno-stack-protector -fno-ident -fomit-frame-pointer \
 	-fmerge-all-constants -ffast-math -funroll-all-loops \
 	-marm -mcpu=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard
 	CXXFLAGS += $(CFLAGS)
-	ASFLAGS += $(CFLAGS)
-	LDFLAGS += -marm -mcpu=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard -Ofast -flto -fuse-linker-plugin
+	ASFLAGS += $(CFLAGS) -c -DHOST_CPU=0x20000002 -mfpu=neon-fp-armv8 -mfloat-abi=hard -DARM_HARDFP
+	CC_AS = $(CC)
+	LDFLAGS += -marm -mcpu=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard -Ofast
 	PLATFORM_EXT := unix
 	WITH_DYNAREC = arm
 	HAVE_GENERIC_JIT = 0
 	CORE_DEFINES += -DLOW_END -DLOW_RES
+
+else ifeq ($(platform), goadvance)
+	EXT ?= so
+	TARGET := $(TARGET_NAME)_libretro.$(EXT)
+	SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
+	fpic = -fPIC
+	LIBS += -lrt
+	CC_AS = $(CC)
+	FORCE_GLES = 1
+	SINGLE_PREC_FLAGS = 1
+	HAVE_LTCG = 0
+	HAVE_OPENMP = 1
+	CFLAGS += -march=armv8-a+crc+simd -mtune=cortex-a35 -mcpu=cortex-a35 -O3 -pipe -fno-plt -fdata-sections -ffunction-sections -Wl,--gc-sections -fno-stack-protector -fno-ident -fomit-frame-pointer -fmerge-all-constants -fno-math-errno -Wl,--gc-sections -falign-functions=1 -falign-jumps=1 -falign-loops=1 -fno-unwind-tables -fno-asynchronous-unwind-tables -funroll-all-loops -fmerge-all-constants -frename-registers -funsafe-math-optimizations -ftree-vectorize
+	CFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers -ftree-vectorize
+	CXXFLAGS += $(CFLAGS)
+	ASFLAGS += $(CFLAGS) -c
+	PLATFORM_EXT := unix
+	WITH_DYNAREC = arm64
+	HAVE_GENERIC_JIT = 0
+	CORE_DEFINES += -DLOW_END -DLOW_RES
+
 	
 #########################################
 
@@ -1110,4 +1131,3 @@ endif
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
-
